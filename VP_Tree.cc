@@ -278,13 +278,13 @@ vector<int> readfile(const char* file){
 	getline(fs, t);
 	getline(fs, t);
 	// start at index 9
-	int len = stoi(t.substr(9, t.size() - 9));
+	int len = atoi(t.substr(9, t.size() - 9).c_str());
 	vector<int> out;
 	getline(fs, t, ',');
 	t = t.substr(12, t.size() - 12);
-	out.push_back(stoi(t));
+	out.push_back(atoi(t.c_str()));
 	while (getline(fs, t, ',')){
-		out.push_back(stoi(t));
+		out.push_back(atoi(t.c_str()));
 	}
 	return out;
 }
@@ -348,7 +348,7 @@ int AudioDBMain(){
 
 		delete [] ar;
 	}
-	for (; FEATURE_LENGTH <= 30; FEATURE_LENGTH += 5){
+	for (; FEATURE_LENGTH <= 30; FEATURE_LENGTH = 31){
 		cout << "\n\n*** Feature Length " << FEATURE_LENGTH << "***" << endl;
 		FeatureSet kSet = BuildFeatureSet(keys);
 		FeatureSet sSet = BuildFeatureSet(samples);
