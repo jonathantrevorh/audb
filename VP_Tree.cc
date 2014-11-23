@@ -19,15 +19,22 @@ VP_TREE.CC REGION!
 #include <iostream>
 using namespace std;
 
-// Note: this typedef is used so that
+// Note: these typedef are used so that
 // any changes to how we represent the feature can
 // happen here
-
+int FEATURE_LENGTH = 15;
+string FOLDER = "Music/";
+vector<string> keys_paths;
+vector<string> sample_paths;
+vector<string> keys_names;
+vector<string> sample_names;
+vector<vector<int> > vp_global_cache;
 typedef long Feature_Dist;
 Feature_Dist MAX_FEATURE_DIST = (~(unsigned long) 0) >> 1;
 typedef vector<int> Feature;
 struct Feature_t {
-	Feature* feature;
+	//Feature* feature;
+	int* feature_start;
 	int Key_ID;
 };
 typedef vector<Feature_t> FeatureSet;
@@ -41,13 +48,45 @@ public:
 	VP_Node(VP_Node* node) : VantagePoint(node->VantagePoint), Radius(node->Radius), Left(node->Left), Right(node->Right){}
 	VP_Node() {}
 };
-void Free_VP(VP_Node* root){
-	// not currently being used
+VP_Node index_root;
+void internal_free_vp(VP_Node* root){
+	//static int hitCount = 0;
+	//cout << ++hitCount << endl;
 	if (root == NULL)
 		return;
-	Free_VP(root->Left);
-	Free_VP(root->Right);
+	internal_free_vp(root->Left);
+	internal_free_vp(root->Right);
 	delete root;
+}
+void Free_VP(VP_Node root){
+	internal_free_vp(root.Left);
+	internal_free_vp(root.Right);
+}
+
+Feature_Dist Distance(int* f1, Feature f2){
+	Feature_Dist dist = 0;
+	for (int i = 0; i < f2.size(); i++){
+		unsigned long t = f1[i] ^ f2[i];
+		while (t != 0){
+			dist += t & 1;
+			t >>= 1;
+		}
+	}
+	return dist;
+}
+Feature_Dist Distance(Feature f2, int* f1){
+	return Distance(f1, f2);
+}
+Feature_Dist Distance(int* f1, int*f2){
+	Feature_Dist dist = 0;
+	for (int i = 0; i < FEATURE_LENGTH; i++){
+		unsigned long t = f1[i] ^ f2[i];
+		while (t != 0){
+			dist += t & 1;
+			t >>= 1;
+		}
+	}
+	return dist;
 }
 Feature_Dist Distance(Feature f1, Feature f2){
 	// Hamming Distance
@@ -61,13 +100,24 @@ Feature_Dist Distance(Feature f1, Feature f2){
 	}
 	return dist;
 }
-
+Feature_Dist GetEnergy(FeatureSet S, int* P, Feature_Dist radius){
+	// using variance as energy
+	Feature_Dist energy, t;
+	energy = 0; t = 0;
+	for (int i = 0; i < S.size(); i++){
+		//t = Distance(*(S[i].feature), P) - radius;
+		t = Distance(S[i].feature_start, P) - radius;
+		energy += (t * t);
+	}
+	return energy / S.size(); // will have truncate problems but close enough
+}
 Feature_Dist GetEnergy(FeatureSet S, Feature P, Feature_Dist radius){
 	// using variance as energy
 	Feature_Dist energy, t;
 	energy = 0; t = 0;
 	for (int i = 0; i < S.size(); i++){
-		t = Distance(*(S[i].feature), P) - radius;
+		//t = Distance(*(S[i].feature), P) - radius;
+		t = Distance(S[i].feature_start, P) - radius;
 		energy += (t * t);
 	}
 	return energy / S.size(); // will have truncate problems but close enough
@@ -83,17 +133,29 @@ FeatureSet GetSample(FeatureSet S){
 		}
 		return P;
 	}
-		
+
 	for (int i = 0; i < sampleSize; i++)
 		P.push_back(S[rand() % sz]);
 	return P;
+}
+Feature_Dist GetMedian(int* vp, FeatureSet S){
+	// Return median Distance of vp to features
+	// in set S
+	vector<Feature_Dist> dist;
+	for (int i = 0; i < S.size(); i++){
+		//dist.push_back(Distance(vp, *(S[i].feature)));
+		dist.push_back(Distance(vp, S[i].feature_start));
+	}
+	sort(dist.begin(), dist.end());
+	return dist[dist.size() / 2];
 }
 Feature_Dist GetMedian(Feature vp, FeatureSet S){
 	// Return median Distance of vp to features
 	// in set S
 	vector<Feature_Dist> dist;
 	for (int i = 0; i < S.size(); i++){
-		dist.push_back(Distance(vp, *(S[i].feature)));
+		//dist.push_back(Distance(vp, *(S[i].feature)));
+		dist.push_back(Distance(vp, S[i].feature_start));
 	}
 	sort(dist.begin(), dist.end());
 	return dist[dist.size() / 2];
@@ -112,7 +174,8 @@ void internal_search(VP_Node* root, Feature sample, Feature_Dist* dist, Feature_
 		*dist = MAX_FEATURE_DIST;
 		return;
 	}
-	Feature_Dist cDist = Distance(sample, *(root->VantagePoint.feature));
+//	Feature_Dist cDist = Distance(sample, *(root->VantagePoint.feature));
+	Feature_Dist cDist = Distance(sample, root->VantagePoint.feature_start);
 	if (isRightCheck && cDist >= root->Radius)
 		return;
 	if (cDist < root->Radius){
@@ -125,7 +188,7 @@ void internal_search(VP_Node* root, Feature sample, Feature_Dist* dist, Feature_
 		// than the sample is to the boundary of the radius
 		// we know there are no points outside of the left child
 		// that could be closer
-		if (tdist < root->Radius - cDist){ 
+		if (tdist < root->Radius - cDist){
 			if (tdist < cDist){
 				*dist = tdist;
 				*match = found;
@@ -152,6 +215,7 @@ void internal_search(VP_Node* root, Feature sample, Feature_Dist* dist, Feature_
 				else {
 					*dist = cDist;
 					*match = root->VantagePoint;
+					
 				}
 			}
 		}
@@ -169,6 +233,7 @@ void internal_search(VP_Node* root, Feature sample, Feature_Dist* dist, Feature_
 		else {
 			*dist = cDist;
 			*match = root->VantagePoint;
+			
 		}
 	}
 } //
@@ -196,8 +261,10 @@ Feature_t Select_VP(FeatureSet S){
 	for (int i = 0; i < P.size(); i++){
 		FeatureSet D;
 		D = GetSample(S);
-		cRad = GetMedian(*(P[i].feature), D);
-		spread = GetEnergy(D, *(P[i].feature), cRad);
+		/*cRad = GetMedian(*(P[i].feature), D);
+		spread = GetEnergy(D, *(P[i].feature), cRad);*/
+		cRad = GetMedian(P[i].feature_start, D);
+		spread = GetEnergy(D, P[i].feature_start, cRad);
 		// using variance as energy
 		// want to maximize energy
 		if (spread > best_spread){
@@ -222,24 +289,30 @@ VP_Node Build_VP(FeatureSet S){
 		node.Radius = 0;
 		return node;
 	}
-	
-	
+
+
 	node.VantagePoint = Select_VP(S); // select Vantage Point
-	node.Radius = GetMedian(*(node.VantagePoint.feature), S); // Get radius for vantage point
+	//node.Radius = GetMedian(*(node.VantagePoint.feature), S); // Get radius for vantage point
+	node.Radius = GetMedian(node.VantagePoint.feature_start, S); // Get radius for vantage point
 	FeatureSet left, right;
 	// Partition into two sets based on if there are within radius or not
+	Feature_Dist prevD = -1;
 	for (int i = 0; i < S.size(); i++){
 		// Might need to consider not including
 		// checking vantage point with itself
 		// (it is still in the set)
-		Feature_Dist d = Distance(*(node.VantagePoint.feature), *(S[i].feature));
-		if (d< node.Radius || d == 0){
+		//Feature_Dist d = Distance(*(node.VantagePoint.feature), *(S[i].feature));
+		Feature_Dist d = Distance(node.VantagePoint.feature_start, S[i].feature_start);
+		if (d < node.Radius || d == 0 || (d < node.Radius && d == prevD) ){
 			left.push_back(S[i]);
 		}
 		else {
 			right.push_back(S[i]);
 		}
+		prevD = d;
 	}
+
+	// Need to deallocate these nodes
 	if (left.size() > 0)
 		node.Left = new VP_Node(Build_VP(left));
 	else
@@ -255,21 +328,8 @@ VP_Node Build_VP(FeatureSet S){
 /*
 END OF VP_TREE.CC REGION
 */
-int FEATURE_LENGTH = 15;
-int dist(vector<int> d1, vector<int> d2, int min = -1){
-	min= min == -1 ? (d1.size() < d2.size()) ? d1.size() : d2.size() : min;
-	int dist = 0;
-	for (int i = 0; i < min; i++){
-		unsigned t = d1[i] ^ d2[i];
-		while (t != 0){
-			if (t & 1)
-				dist++;
-			t >>= 1;
-		}
-	}
-	return dist;
 
-}
+// could potentially add some error handling
 vector<int> readfile(const char* file){
 	ifstream fs(file);
 
@@ -288,68 +348,145 @@ vector<int> readfile(const char* file){
 	}
 	return out;
 }
-int min_dist(vector<int> key, vector<int> sample){
-	int mdist = (~((unsigned) 0)) >> 1;
-	int upper = key.size() - sample.size();
-	for (int i = 0; i <= upper; i++){
-		vector<int> t(sample.size());
-		for (int j = 0; j < sample.size(); j++){
-			t[j] = key[i + j];
-		}
-		int td = dist(t, sample);
-		if (td < mdist)
-			mdist = td;
-	}
-	return mdist;
+bool vp_cache_init_flag = false;
+bool vp_cache_reset = false;
+// needs to be called before building feature sets
+// to initialize cache with enough memory so that
+// pointers aren't invalidated when the vector must reallocate
+// memory
+void FeatureSetCacheInit(int numKeys){
+	vp_cache_init_flag = true;
+	vp_cache_reset = !vp_cache_reset;
+	vp_global_cache.clear();
+	vp_global_cache.resize(numKeys);
 }
 FeatureSet BuildFeatureSet(vector<vector<int> > keys){
+	static int index = 0;
+	static bool cacheReset = false;
+	if (cacheReset != vp_cache_reset){
+	  // Cache has been reset (cleared and resized)
+	  cacheReset = vp_cache_reset;
+          index = 0;
+	}
+	if (!vp_cache_init_flag){
+		cout << "WARNING!! internal cache should be initialized using the function 'FeatureSetCacheInit(int numKeys'." << endl;
+	}
 	FeatureSet S;
 	for (int i = 0; i < keys.size(); i++){
+		//for (int k = 0; k <= keys[i].size() - FEATURE_LENGTH; k++){
+		//	vector<int> f(FEATURE_LENGTH);
+		//	for (int j = 0; j < FEATURE_LENGTH; j++){
+		//		f[j] = keys[i][k + j];
+		//	}
+		//	Feature_t t;
+		//	//t.feature = new Feature();
+		//	//*(t.feature) = f;
+		//	vp_global_cache.push_back(f);
+		//	t.feature_start = &(vp_global_cache[vp_global_cache.size() - 1][0]);
+		//	t.Key_ID = i;
+		//	S.push_back(t);
+
+		//}
+		if (index == vp_global_cache.size()){
+			cout << "WARNING!! Ran out of internal cache for feature sets, 'FeatureSetCacheInit' was not called with enough space, storage locations will be reused and loss of data will occur" << endl;
+		}
+		vp_global_cache[index++] = keys[i]; //.push_back(keys[i]);
 		for (int k = 0; k <= keys[i].size() - FEATURE_LENGTH; k++){
-			vector<int> f(FEATURE_LENGTH);
-			for (int j = 0; j < FEATURE_LENGTH; j++){
-				f[j] = keys[i][k + j];
-			}
 			Feature_t t;
-			t.feature = new Feature();
-			*(t.feature) = f;
+			t.feature_start = &(vp_global_cache[index - 1][k]);//&(vp_global_cache[vp_global_cache.size() - 1][k]);
 			t.Key_ID = i;
 			S.push_back(t);
 		}
 	}
 	return S;
 }
-int AudioDBMain(){
-	int KEYS = 5;
-	int SAMPLES = 10;
-	string FOLDER = "Music/";
-	string keys_paths [] = { "\"GorillazWav.wav\"", "\"Martin Garrix - Animals.wav\"", "\"Everything at Once.mp3\"", "\"RHCP - Look Around.mp3\"", "\"Aoki - Boneless.mp3\"" };
-	string sample_paths [] = { "\"Martin2.wav\"", "\"Gorillaz2.wav\"", "\"Martin3.wav\"", "\"Gorillaz3.wav\"", "\"Everything2.wav\"", "\"Everything3.wav\"", "\"RHCP2.wav\"", "\"RHCP3.wav\"", "Aoki2.wav", "Aoki3.wav" };
-	string keys_names [] = { "Gorillaz", "Animals", "Everything at Once", "Look Around", "Boneless" };
-	string sample_names [] = { "Animals", "Gorillaz", "Animals", "Gorillaz", "Everything at Once", "Everything at Once", "Look Around", "Look Around", "Boneless", "Boneless" };
-	vector<vector<int> > keys;
-	for (int i = 0; i < KEYS; i++){
-		string tm = "fpcalc -raw " + FOLDER + keys_paths[i] + " > out_temp.txt ";
+vector<Feature> GenerateFeatures(vector<string> paths, bool useGlobalFolder = true){
+	vector<Feature> features;
+	for (int i = 0; i < paths.size(); i++){
+		string tm = (useGlobalFolder) ? "fpcalc -raw " + FOLDER + paths[i] + " > out_temp.txt " : "fpcalc -raw " + paths[i] + " > out_temp.txt ";
 		char* ar = new char[tm.size() + 1];
 		tm.copy(ar, tm.size());
 		ar[tm.size()] = 0;
 		system(ar);
-		keys.push_back(readfile("out_temp.txt"));
+		features.push_back(readfile("out_temp.txt"));
 		delete [] ar;
 	}
-	vector<vector<int> > samples;
-	for (int i = 0; i < SAMPLES; i++){
-		string tm = "fpcalc -raw " + FOLDER + sample_paths[i] + " > out_temp.txt ";
-		char* ar = new char[tm.size() + 1];
-		tm.copy(ar, tm.size());
-		ar[tm.size()] = 0;
-		system(ar);
-		samples.push_back(readfile("out_temp.txt"));
+	return features;
+}
+void ClearKeys(){
+	keys_names.clear();
+	keys_paths.clear();
+}
+void ClearSamples(){
+	sample_names.clear();
+	sample_paths.clear();
+}
+void AddtoPaths(string path, vector<string>* paths, vector<string>* names, string name = ""){
+	paths->push_back(path);
+	if (name == "")
+		names->push_back(path);// consider pruning out certain characters first (such as '"')
+	else
+		names->push_back(name);
 
-		delete [] ar;
+}
+void AddSample(string path, string name = ""){
+	AddtoPaths(path, &sample_paths, &sample_names, name);
+}
+void AddKey(string path, string name = ""){
+	AddtoPaths(path, &keys_paths, &keys_names, name);
+}
+void SetFolder(string folder){
+	FOLDER = folder;
+}
+void BuildIndex(){
+	vector<Feature> keys = GenerateFeatures(keys_paths);
+	FeatureSet kSet = BuildFeatureSet(keys);
+	index_root = Build_VP(kSet);
+}
+// return type needs to be determined
+// based on what we want to return
+// currently returns the name of the matched song
+string SearchIndex(string sample_path){
+	// the sample_path may contain multiple
+	// feature windows, so we will find the one
+	// that contains the best match
+	vector<string> dummyVector;
+	dummyVector.push_back(sample_path);
+	vector<Feature> sampleFeatures = GenerateFeatures(dummyVector, false);
+	FeatureSet sSet = BuildFeatureSet(sampleFeatures);
+	Feature_Dist dist = MAX_FEATURE_DIST;
+	Feature_t min;
+	for (int i = 0; i < sampleFeatures.size(); i++){
+		Feature_Dist d;
+		Feature_t found;
+		found = Search(&index_root, Feature(sSet[i].feature_start, sSet[i].feature_start + FEATURE_LENGTH), &d);
+		if (d < dist){
+			dist = d;
+			min = found;
+		}
 	}
-	for (; FEATURE_LENGTH <= 30; FEATURE_LENGTH = 31){
+	return keys_names[min.Key_ID];
+}
+int AudioDBMain(){
+	int key_num = 5;
+	int sample_num = 10;
+	string key_paths [] = { "\"GorillazWav.wav\"", "\"Martin Garrix - Animals.wav\"", "\"Everything at Once.mp3\"", "\"RHCP - Look Around.mp3\"", "\"Aoki - Boneless.mp3\"" };
+	string key_names [] = { "Gorillaz", "Animals", "Everything at Once", "Look Around", "Boneless" };
+		string sample_paths2[] = { "\"Martin2.wav\"", "\"Gorillaz2.wav\"", "\"Martin3.wav\"", "\"Gorillaz3.wav\"", "\"Everything2.wav\"", "\"Everything3.wav\"", "\"RHCP2.wav\"", "\"RHCP3.wav\"", "Aoki2.wav", "Aoki3.wav" };
+	string sample_names2[] = { "Animals", "Gorillaz", "Animals", "Gorillaz", "Everything at Once", "Everything at Once", "Look Around", "Look Around", "Boneless", "Boneless" };
+	for (int i = 0; i < key_num; i++){
+		AddKey(key_paths[i], key_names[i]);
+	}
+	for (int i = 0; i < sample_num; i++){
+		AddSample(sample_paths2[i], sample_names2[i]);
+	}
+	vector<vector<int> > keys = GenerateFeatures(keys_paths);
+
+	vector<vector<int> > samples = GenerateFeatures(sample_paths);
+
+	for (; FEATURE_LENGTH <= 30;  FEATURE_LENGTH++){ 
 		cout << "\n\n*** Feature Length " << FEATURE_LENGTH << "***" << endl;
+		FeatureSetCacheInit(keys.size() + samples.size());
 		FeatureSet kSet = BuildFeatureSet(keys);
 		FeatureSet sSet = BuildFeatureSet(samples);
 		clock_t t1;
@@ -358,11 +495,12 @@ int AudioDBMain(){
 		long hit = 0;
 		long miss = 0;
 		t1 = clock();
+		// REGION LINEAR SEARCH
 		for (int i = 0; i < sSet.size(); i++){
 			int minDist = (~((unsigned) 0)) >> 1;
 			int ind = -1;
 			for (int j = 0; j < kSet.size(); j++){
-				int t = dist(*(kSet[j].feature), *(sSet[i].feature));
+				int t = Distance(kSet[j].feature_start, sSet[i].feature_start);
 				if (t < minDist){
 					minDist = t;
 					ind = j;
@@ -374,6 +512,7 @@ int AudioDBMain(){
 				miss++;
 			//	cout << "Sample: " << sample_names[sSet[i].Key_ID] << " Song: " << keys_names[kSet[ind].Key_ID] << " Distance: " << minDist << endl;
 		}
+		// REGION END LINEAR SEARCH
 		t2 = clock();
 		cout << "{Linear Search} Execution Time: " << t2 - t1 << "   Total Samples: " << total << "   Accuracy: " << ((double) hit) / total << endl;
 		t1 = clock();
@@ -386,7 +525,7 @@ int AudioDBMain(){
 		for (int i = 0; i < sSet.size(); i++){
 			Feature_Dist d;
 			Feature_t found;
-			found = Search(&root, *(sSet[i].feature), &d);
+			found = Search(&root, Feature(sSet[i].feature_start, sSet[i].feature_start + FEATURE_LENGTH), &d);
 			//cout << "Sample: " << sample_names[sSet[i].Key_ID] << " Song: " << keys_names[found.Key_ID] << " Distance: " << d<< endl;
 			if (sample_names[sSet[i].Key_ID] == keys_names[found.Key_ID])
 				hit++;
@@ -395,11 +534,11 @@ int AudioDBMain(){
 		}
 		t2 = clock();
 		cout << "{Indexed Search} Execution Time: " << t2 - t1 << "   Total Samples: " << total << "   Accuracy: " << ((double) hit) / total << endl;
-		//Free_VP(&root);
+		Free_VP(root);
+
 	}
 	return 0;
 }
-
-int main() {
-    AudioDBMain();
+int main(){
+	return AudioDBMain();
 }
