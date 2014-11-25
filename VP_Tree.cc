@@ -22,7 +22,7 @@ using namespace std;
 // Note: these typedef are used so that
 // any changes to how we represent the feature can
 // happen here
-int FEATURE_LENGTH = 15;
+int FEATURE_LENGTH = 25;
 string FOLDER = "Music/";
 vector<string> keys_paths;
 vector<string> sample_paths;
@@ -468,12 +468,16 @@ string SearchIndex(string sample_path){
 	return keys_names[min.Key_ID];
 }
 int AudioDBMain(){
-	int key_num = 20;//23;
+	for (int key_num = 1; key_num < 22; key_num++){
+	cout << "Executing with " << key_num << " songs in the index" << endl;
+	//int key_num = 20;//23;
 	int sample_num = 10;
 	string key_paths [] = { "\"GorillazWav.wav\"", "\"Martin Garrix - Animals.wav\"", "\"Everything at Once.mp3\"", "\"RHCP - Look Around.mp3\"", "\"Aoki - Boneless.mp3\"", "\"AWOLNATION - Sail.mp3\"", "\"Check My Steezo.mp3\"", "\"No Beef.mp3\"", "\"Get Up.mp3\"" , "Rattle.mp3", "Stampede.mp3", "\"Too Turnt Up.mp3\"", "\"Breakn A Sweat.mp3\"", "\"Duck Sauce.mp3\"", "Existence.mp3" , "\"Hold me Close.mp3\"", "Rage.mp3", "Freak.mp3", "\"Express Yourself.mp3\"", "\"Turn Down For What.mp3\"", "Bangarang.mp3", "\"Can't You See.mp3\"", "Turbulence.mp3"};
 	string key_names [] = { "Gorillaz", "Animals", "Everything at Once", "Look Around", "Boneless" , "Sail", "Check My Steezo", "No Beef", "Get Up", "Rattle", "Stampede", "TTU", "Breakn a Sweat",  "Duck Sauce", "Existence", "Hold Me Close", "Rage", "Freak", "Express Yourself", "Turn Down For What", "Bangarang", "Can't You See", "Turbulence"};
 		string sample_paths2[] = { "\"Martin2.wav\"", "\"Gorillaz2.wav\"", "\"Martin3.wav\"", "\"Gorillaz3.wav\"", "\"Everything2.wav\"", "\"Everything3.wav\"", "\"RHCP2.wav\"", "\"RHCP3.wav\"", "Aoki2.wav", "Aoki3.wav" };
 	string sample_names2[] = { "Animals", "Gorillaz", "Animals", "Gorillaz", "Everything at Once", "Everything at Once", "Look Around", "Look Around", "Boneless", "Boneless" };
+	ClearKeys();
+	ClearSamples();
 	for (int i = 0; i < key_num; i++){
 		AddKey(key_paths[i], key_names[i]);
 	}
@@ -484,8 +488,8 @@ int AudioDBMain(){
 
 	vector<vector<int> > samples = GenerateFeatures(sample_paths);
 
-	for (; FEATURE_LENGTH <= 30;  FEATURE_LENGTH++){ 
-		cout << "\n\n*** Feature Length " << FEATURE_LENGTH << "***" << endl;
+	for (FEATURE_LENGTH = 25; FEATURE_LENGTH <= 30; FEATURE_LENGTH = 31){// FEATURE_LENGTH++){ 
+		//cout << "\n\n*** Feature Length " << FEATURE_LENGTH << "***" << endl;
 		FeatureSetCacheInit(keys.size() + samples.size());
 		FeatureSet kSet = BuildFeatureSet(keys);
 		FeatureSet sSet = BuildFeatureSet(samples);
@@ -537,6 +541,7 @@ int AudioDBMain(){
 		Free_VP(root);
 
 	}
+ }
 	return 0;
 }
 int main(){

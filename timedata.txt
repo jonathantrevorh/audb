@@ -1,0 +1,84 @@
+Executing with 1 songs in the index
+{Linear Search} Execution Time: 1540000   Total Samples: 621   Accuracy: 0.214171
+Time to build index with 924 keys:  90000
+{Indexed Search} Execution Time: 50000   Total Samples: 621   Accuracy: 0.214171
+Executing with 2 songs in the index
+{Linear Search} Execution Time: 3070000   Total Samples: 621   Accuracy: 0.31723
+Time to build index with 1848 keys:  200000
+{Indexed Search} Execution Time: 100000   Total Samples: 621   Accuracy: 0.294686
+Executing with 3 songs in the index
+{Linear Search} Execution Time: 4680000   Total Samples: 621   Accuracy: 0.426731
+Time to build index with 2772 keys:  330000
+{Indexed Search} Execution Time: 110000   Total Samples: 621   Accuracy: 0.412238
+Executing with 4 songs in the index
+{Linear Search} Execution Time: 6220000   Total Samples: 621   Accuracy: 0.660225
+Time to build index with 3696 keys:  470000
+{Indexed Search} Execution Time: 150000   Total Samples: 621   Accuracy: 0.607085
+Executing with 5 songs in the index
+{Linear Search} Execution Time: 7900000   Total Samples: 621   Accuracy: 0.993559
+Time to build index with 4620 keys:  610000
+{Indexed Search} Execution Time: 130000   Total Samples: 621   Accuracy: 0.882448
+Executing with 6 songs in the index
+{Linear Search} Execution Time: 9490000   Total Samples: 621   Accuracy: 0.991948
+Time to build index with 5544 keys:  720000
+{Indexed Search} Execution Time: 140000   Total Samples: 621   Accuracy: 0.871176
+Executing with 7 songs in the index
+{Linear Search} Execution Time: 10980000   Total Samples: 621   Accuracy: 0.991948
+Time to build index with 6468 keys:  910000
+{Indexed Search} Execution Time: 120000   Total Samples: 621   Accuracy: 0.872786
+Executing with 8 songs in the index
+{Linear Search} Execution Time: 13190000   Total Samples: 621   Accuracy: 0.991948
+Time to build index with 7392 keys:  1010000
+{Indexed Search} Execution Time: 200000   Total Samples: 621   Accuracy: 0.872786
+Executing with 9 songs in the index
+{Linear Search} Execution Time: 13990000   Total Samples: 621   Accuracy: 0.991948
+Time to build index with 8316 keys:  1230000
+{Indexed Search} Execution Time: 150000   Total Samples: 621   Accuracy: 0.847021
+Executing with 10 songs in the index
+{Linear Search} Execution Time: 15580000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 9240 keys:  1340000
+{Indexed Search} Execution Time: 150000   Total Samples: 621   Accuracy: 0.806763
+Executing with 11 songs in the index
+{Linear Search} Execution Time: 17270000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 10164 keys:  1450000
+{Indexed Search} Execution Time: 190000   Total Samples: 621   Accuracy: 0.814815
+Executing with 12 songs in the index
+{Linear Search} Execution Time: 18590000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 11088 keys:  1570000
+{Indexed Search} Execution Time: 180000   Total Samples: 621   Accuracy: 0.824477
+Executing with 13 songs in the index
+{Linear Search} Execution Time: 20360000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 12012 keys:  1710000
+{Indexed Search} Execution Time: 180000   Total Samples: 621   Accuracy: 0.850242
+Executing with 14 songs in the index
+{Linear Search} Execution Time: 21700000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 12936 keys:  1850000
+{Indexed Search} Execution Time: 170000   Total Samples: 621   Accuracy: 0.785829
+Executing with 15 songs in the index
+{Linear Search} Execution Time: 23500000   Total Samples: 621   Accuracy: 0.977456
+Time to build index with 13860 keys:  2070000
+{Indexed Search} Execution Time: 200000   Total Samples: 621   Accuracy: 0.795491
+Executing with 16 songs in the index
+{Linear Search} Execution Time: 24570000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 14784 keys:  2140000
+{Indexed Search} Execution Time: 130000   Total Samples: 621   Accuracy: 0.800322
+Executing with 17 songs in the index
+{Linear Search} Execution Time: 26070000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 15708 keys:  2290000
+{Indexed Search} Execution Time: 240000   Total Samples: 621   Accuracy: 0.834138
+Executing with 18 songs in the index
+{Linear Search} Execution Time: 27950000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 16632 keys:  2590000
+{Indexed Search} Execution Time: 120000   Total Samples: 621   Accuracy: 0.816425
+Executing with 19 songs in the index
+{Linear Search} Execution Time: 29610000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 17556 keys:  2650000
+{Indexed Search} Execution Time: 180000   Total Samples: 621   Accuracy: 0.835749
+Executing with 20 songs in the index
+{Linear Search} Execution Time: 30450000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 18480 keys:  2790000
+{Indexed Search} Execution Time: 190000   Total Samples: 621   Accuracy: 0.776167
+Executing with 21 songs in the index
+{Linear Search} Execution Time: 32080000   Total Samples: 621   Accuracy: 0.972625
+Time to build index with 19404 keys:  2950000
+{Indexed Search} Execution Time: 150000   Total Samples: 621   Accuracy: 0.78905
