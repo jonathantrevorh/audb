@@ -555,7 +555,7 @@ static int closureConnect(
     return SQLITE_ERROR;
   }
   rc = sqlite3_declare_vtab(db,
-         "CREATE TABLE x(id,depth,root HIDDEN,tablename HIDDEN,"
+         "CREATE TABLE x(id,path,root HIDDEN,tablename HIDDEN,"
                         "idcolumn HIDDEN,parentcolumn HIDDEN)"
        );
 #define CLOSURE_COL_ID              0
@@ -579,6 +579,7 @@ closureConnectError:
 ** Open a new closure cursor.
 */
 static int closureOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor){
+  printf("closureopen\n");
   closure_vtab *p = (closure_vtab*)pVTab;
   closure_cursor *pCur;
   pCur = sqlite3_malloc( sizeof(*pCur) );
@@ -789,8 +790,37 @@ static int closureRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
 }
 
 static int closureUpdate(sqlite3_vtab *pVTab, int argc, sqlite3_value **argv, sqlite_int64 *pRowid) {
-    printf("update called");
-    return SQLITE_OK;
+    int isDelete = argc == 1;
+    if (isDelete) {
+        // TODO: handle deletion of things
+        const char errorMsg[] = "DELETE command not supported";
+        printf(errorMsg);
+        pVTab->zErrMsg = sqlite3_mprintf(errorMsg);
+        return SQLITE_ERROR;
+    }
+
+    int zerothArgType = sqlite3_value_type(argv[0]);
+    int isInsert = zerothArgType == SQLITE_NULL;
+    if (isInsert) {
+        const unsigned char* id = sqlite3_value_text(argv[2]);
+        const unsigned char* path = sqlite3_value_text(argv[3]);
+        printf("insert id: %s, path: %s\n", id, path);
+        return SQLITE_OK;
+    }
+
+    int updatedRowId = argv[0] == argv[1];
+    if (updatedRowId) {
+        const char errorMsg[] = "updating row id not supported";
+        printf(errorMsg);
+        pVTab->zErrMsg = sqlite3_mprintf(errorMsg);
+        return SQLITE_ERROR;
+    }
+
+    // update values
+    const char errorMsg[] = "updating row values";
+    printf(errorMsg);
+    pVTab->zErrMsg = sqlite3_mprintf(errorMsg);
+    return SQLITE_ERROR;
 }
 
 /*
