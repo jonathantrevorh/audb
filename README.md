@@ -7,7 +7,11 @@ audb
 - implementing virtual table to connect to vp tree impl - in progress
 
 ## Requirements
-The `sqlite3-dev` package is required for sqlite3 header files.
+`sqlite3` and its development files are required to run and compile against sqlite3.
+Installing on Ubuntu:
+```
+sudo apt-get install sqlite3 sqlite3-dev
+```
 
 ## Running
 Not final packaging, but running `./sqbuild` compiles the extension and run test commands in sqlite3.
