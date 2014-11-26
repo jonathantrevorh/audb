@@ -1,0 +1,6 @@
+#!/bin/bash -e
+
+# compile the shared audb vtable and run test sql
+g++ -g -fPIC -shared audb.cc -o poc.so -lm
+#gcc -g -fPIC -shared audb.c  poc.so -o audb.so -lm 
+

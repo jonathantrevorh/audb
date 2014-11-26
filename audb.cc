@@ -19,6 +19,14 @@ VP_TREE.CC REGION!
 #include <cstring>
 #include <iostream>
 #include "VP_Tree.h"
+// SQLITE Extension
+#include "sqlite3ext.h"
+SQLITE_EXTENSION_INIT1
+#include <assert.h>
+#include <ctype.h>
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+
+// END SQLITE Extension
 using namespace std;
 
 
@@ -26,10 +34,11 @@ using namespace std;
 // any changes to how we represent the feature can
 // happen here
 int FEATURE_LENGTH = 25;
-string FOLDER = "Music/";
+string FOLDER = "";
 vector<string> keys_paths;
 vector<string> sample_paths;
 vector<string> keys_names;
+vector<string> keys_artists;
 vector<string> sample_names;
 vector<vector<int> > vp_global_cache;
 typedef long Feature_Dist;
@@ -53,7 +62,7 @@ public:
 };
 VP_Node index_root;
 void internal_free_vp(VP_Node* root){
-	//static int hitCount = 0;
+	//  int hitCount = 0;
 	//cout << ++hitCount << endl;
 	if (root == NULL)
 		return;
@@ -364,8 +373,8 @@ void FeatureSetCacheInit(int numKeys){
 	vp_global_cache.resize(numKeys);
 }
 FeatureSet BuildFeatureSet(vector<vector<int> > keys){
-	static int index = 0;
-	static bool cacheReset = false;
+	  int index = 0;
+	  bool cacheReset = false;
 	if (cacheReset != vp_cache_reset){
 	  // Cache has been reset (cleared and resized)
 	  cacheReset = vp_cache_reset;
@@ -442,9 +451,14 @@ void Add_Sample(char* path, char* name){
 void AddKey(string path, string name = ""){
 	AddtoPaths(path, &keys_paths, &keys_names, name);
 }
-void Add_Key(char* path, char* name){
-	AddKey(string(path), string(name));
+void Add_Key(char* path, char* songName, char* artist){
+	keys_paths.push_back(string(path));
+	keys_names.push_back(string(songName));
+	keys_artists.push_back(string(artist));
 }
+//void Add_Key(char* path, char* name){
+//	AddKey(string(path), string(name));
+//}
 void SetFolder(string folder){
 	FOLDER = folder;
 }
@@ -453,13 +467,41 @@ void Set_Folder(char* folder){
 }
 void BuildIndex(){
 	vector<Feature> keys = GenerateFeatures(keys_paths);
+        FeatureSetCacheInit(keys.size());
 	FeatureSet kSet = BuildFeatureSet(keys);
 	index_root = Build_VP(kSet);
 }
 // return type needs to be determined
 // based on what we want to return
 // currently returns the name of the matched song
-char* SearchIndex(char* samples_path){
+int SearchIndexForKey(char* samples_path){
+	// the sample_path may contain multiple
+	// feature windows, so we will find the one
+	// that contains the best match
+	string sample_path(samples_path);
+	vector<string> dummyVector;
+	dummyVector.push_back(sample_path);
+	vector<Feature> sampleFeatures = GenerateFeatures(dummyVector, false);
+	//FeatureSet sSet = BuildFeatureSet(sampleFeatures);
+	Feature_Dist dist = MAX_FEATURE_DIST;
+	Feature_t min;
+	for (int i = 0; i <= sampleFeatures[0].size() - FEATURE_LENGTH; i++){
+		Feature_Dist d;
+		Feature_t found;
+     		//cout << "Entered search round " << i << endl;
+		found = Search(&index_root, Feature(&(sampleFeatures[0][i]), &(sampleFeatures[0][i+ FEATURE_LENGTH])), &d);
+		if (d < dist){
+			dist = d;
+			min = found;
+		}
+	}
+	//cout << "distance found is " << dist << " Key found is " << min.Key_ID << endl;
+	return min.Key_ID;
+}
+// return type needs to be determined
+// based on what we want to return
+// currently returns the name of the matched song
+char* SearchIndex(char* samples_path, char* field){
 	// the sample_path may contain multiple
 	// feature windows, so we will find the one
 	// that contains the best match
@@ -479,7 +521,15 @@ char* SearchIndex(char* samples_path){
 			min = found;
 		}
 	}
-	string rstr = keys_names[min.Key_ID];
+	string fstr(field);
+	string rstr;
+	if (fstr.find("path") != string::npos || fstr == "*")
+		rstr += keys_paths[min.Key_ID] + "|";
+	if (fstr.find("song") != string::npos || fstr == "*")
+		rstr += keys_names[min.Key_ID] + "|";
+	if (fstr.find("artist") != string::npos || fstr == "*")
+		rstr += keys_artists[min.Key_ID] + "|";
+	//string rstr = keys_names[min.Key_ID];
 	char* rtn = (char*)malloc(rstr.length() + 1);
 	strcpy(rtn, rstr.c_str());
 	return rtn;//keys_names[min.Key_ID].c_str();
@@ -489,7 +539,7 @@ int AudioDBMain(){
 	cout << "Executing with " << key_num << " songs in the index" << endl;
 	//int key_num = 20;//23;
 	int sample_num = 10;
-	string key_paths [] = { "\"GorillazWav.wav\"", "\"Martin Garrix - Animals.wav\"", "\"Everything at Once.mp3\"", "\"RHCP - Look Around.mp3\"", "\"Aoki - Boneless.mp3\"", "\"AWOLNATION - Sail.mp3\"", "\"Check My Steezo.mp3\"", "\"No Beef.mp3\"", "\"Get Up.mp3\"" , "Rattle.mp3", "Stampede.mp3", "\"Too Turnt Up.mp3\"", "\"Breakn A Sweat.mp3\"", "\"Duck Sauce.mp3\"", "Existence.mp3" , "\"Hold me Close.mp3\"", "Rage.mp3", "Freak.mp3", "\"Express Yourself.mp3\"", "\"Turn Down For What.mp3\"", "Bangarang.mp3", "\"Cant You See.mp3\"", "Turbulence.mp3"};
+	string key_paths [] = { "\"GorillazWav.wav\"", "\"Martin Garrix - Animals.wav\"", "\"Everything at Once.mp3\"", "\"RHCP - Look Around.mp3\"", "\"Aoki - Boneless.mp3\"", "\"AWOLNATION - Sail.mp3\"", "\"Check My Steezo.mp3\"", "\"No Beef.mp3\"", "\"Get Up.mp3\"" , "Rattle.mp3", "Stampede.mp3", "\"Too Turnt Up.mp3\"", "\"Breakn A Sweat.mp3\"", "\"Duck Sauce.mp3\"", "Existence.mp3" , "\"Hold me Close.mp3\"", "Rage.mp3", "Freak.mp3", "\"Express Yourself.mp3\"", "\"Turn Down For What.mp3\"", "Bangarang.mp3", "\"Can't You See.mp3\"", "Turbulence.mp3"};
 	string key_names [] = { "Gorillaz", "Animals", "Everything at Once", "Look Around", "Boneless" , "Sail", "Check My Steezo", "No Beef", "Get Up", "Rattle", "Stampede", "TTU", "Breakn a Sweat",  "Duck Sauce", "Existence", "Hold Me Close", "Rage", "Freak", "Express Yourself", "Turn Down For What", "Bangarang", "Can't You See", "Turbulence"};
 		string sample_paths2[] = { "\"Martin2.wav\"", "\"Gorillaz2.wav\"", "\"Martin3.wav\"", "\"Gorillaz3.wav\"", "\"Everything2.wav\"", "\"Everything3.wav\"", "\"RHCP2.wav\"", "\"RHCP3.wav\"", "Aoki2.wav", "Aoki3.wav" };
 	string sample_names2[] = { "Animals", "Gorillaz", "Animals", "Gorillaz", "Everything at Once", "Everything at Once", "Look Around", "Look Around", "Boneless", "Boneless" };
@@ -561,6 +611,359 @@ int AudioDBMain(){
  }
 	return 0;
 }
-int main(){
-	return AudioDBMain();
+
+
+typedef struct  audb_vtab  audb_vtab;
+typedef struct  audb_cursor  audb_cursor;
+typedef struct  audb_queue  audb_queue;
+typedef struct  audb_avl  audb_avl;
+#define ec extern "C"
+
+struct  audb_avl {
+  sqlite3_int64 id;     /* Id of this entry in the table */
+  int iGeneration;      /* Which generation is this entry part of */
+   audb_avl *pList;   /* A linked list of nodes */
+   audb_avl *pBefore; /* Other elements less than id */
+   audb_avl *pAfter;  /* Other elements greater than id */
+   audb_avl *pUp;     /* Parent element */
+  short int height;     /* Height of this node.  Leaf==1 */
+  short int imbalance;  /* Height difference between pBefore and pAfter */
+};
+
+/*
+** A  audb virtual-table object MAY NOT NEED
+*/
+ struct  audb_vtab {
+  sqlite3_vtab base;         /* Base class - must be first */
+  char *zDb;                 /* Name of database.  (ex: "main") */
+  char *zSelf;               /* Name of this virtual table */
+  char *zTableName;          /* Name of table holding parent/child relation */
+  char *zIdColumn;           /* Name of ID column of zTableName */
+  char *zParentColumn;       /* Name of PARENT column in zTableName */
+  sqlite3 *db;               /* The database connection */
+  int nCursor;               /* Number of pending cursors */
+};
+
+/* A  audb cursor object  MAY NOT NEED*/
+ struct  audb_cursor {
+  sqlite3_vtab_cursor base;  /* Base class - must be first */
+   audb_vtab *pVtab;       /* The virtual table this cursor belongs to */
+   int *pCurrent;     /* Current element of output */
+   
+};
+/*
+** xDisconnect/xDestroy method for the  audb module.
+*/
+ec   int  audbDisconnect(sqlite3_vtab *pVtab){
+	//printf("Entered audbDisconnect\n");
+  return SQLITE_OK;
 }
+/*
+** xConnect/xCreate method for the audb module. Arguments are:
+**
+**   argv[0]    -> module name  ("transitive_audb")
+**   argv[1]    -> database name
+**   argv[2]    -> table name
+**   argv[3...] -> arguments
+*/
+
+ec   int audbConnect(
+  sqlite3 *db,
+  void *pAux,
+  int argc, const char *const*argv,
+  sqlite3_vtab **ppVtab,
+  char **pzErr
+){
+	// when called as xCreate this must create
+	// a new sqlite3_vtab object and return pointer to it
+	// in *ppVTab and invoke sqlite3_declare_vtab(sqlite3 *db, const char *zCreateTable)
+	//printf("Entered audbConnect\n");
+ int rc = SQLITE_OK;              /* Return code */
+  audb_vtab *pNew = 0;          /* New virtual table */
+  const char *zDb = argv[1];
+  const char *zVal;
+  int i;
+
+  (void)pAux;
+  *ppVtab = 0;
+  pNew = (audb_vtab*)sqlite3_malloc( sizeof(*pNew) );
+  if( pNew==0 ) return SQLITE_NOMEM;
+  rc = SQLITE_NOMEM;
+  memset(pNew, 0, sizeof(*pNew));
+
+  printf("Building meta-data table... schema is {id, path, song, artist}\n");
+  rc = sqlite3_declare_vtab(db, "CREATE TABLE x(id, path, song, artist)");
+
+  *ppVtab = &pNew->base;
+  return rc;
+
+}
+
+/*
+** Open a new audb cursor.
+*/
+ ec  int audbOpen(sqlite3_vtab *pVTab, sqlite3_vtab_cursor **ppCursor){
+	//printf("Entered open\n");
+	//successful invocation allocates memory for sqlite3_vtab_cursor
+	// initializes and makes *ppCursor point to the new object
+  audb_vtab *p = (audb_vtab*)pVTab;
+  audb_cursor *pCur;
+  pCur = (audb_cursor*)sqlite3_malloc( sizeof(*pCur) );
+  if( pCur==0 ) return SQLITE_NOMEM;
+  memset(pCur, 0, sizeof(*pCur));
+  pCur->pVtab = p;
+  *ppCursor = &pCur->base;
+  p->nCursor++;
+  return SQLITE_OK;
+}
+
+/*
+** Free up all the memory allocated by a cursor.  Set it rLimit to 0
+** to indicate that it is at EOF.
+*/
+ ec  void audbClearCursor(audb_cursor *pCur){
+	//printf("entered clearcursor\n");
+}
+
+/*
+** Close a audb cursor.
+*/
+ ec int audbClose(sqlite3_vtab_cursor *cur){
+	//printf("Entered close\n");
+  return SQLITE_OK;
+}
+
+/*
+** Advance a cursor to its next row of output
+*/
+ ec int audbNext(sqlite3_vtab_cursor *cur){
+	//printf("Entered next\n");
+	audb_cursor* cursor = (audb_cursor*)cur;
+	*(cursor->pCurrent) = -1;
+	sqlite3_free(cursor->pCurrent);
+	cursor->pCurrent = NULL;
+  return SQLITE_OK;
+}
+
+
+
+/*
+** Called to "rewind" a cursor back to the beginning so that
+** it starts its output over again.  Always called at least once
+** prior to any audbColumn, audbRowid, or audbEof call.
+**
+** This routine actually computes the audb.
+**
+** See the comment at the beginning of audbBestIndex() for a
+** description of the meaning of idxNum.  The idxStr parameter is
+** not used.
+*/
+bool VP_INDEX_BUILT = false;
+ ec  int audbFilter(
+  sqlite3_vtab_cursor *pVtabCursor,
+  int idxNum, const char *idxStr,
+  int argc, sqlite3_value **argv
+){
+  //printf("Entered filter\n");
+  if (!VP_INDEX_BUILT){
+	VP_INDEX_BUILT = true;
+	printf("Building index...\n");
+	BuildIndex();
+	printf("Index built...\n");
+  }
+  audb_cursor* pCur = (audb_cursor*)pVtabCursor;
+  int rc = SQLITE_OK;
+  string path((const char*)sqlite3_value_text(argv[0]));
+ // printf("argv[0] value is %s\n", path.c_str());
+  char* pathArg = (char*)malloc(path.length() + 1);
+  strcpy(pathArg, path.c_str());
+  //printf("Searching for song that matches sample found in %s\n", pathArg);
+  pCur->pCurrent  = (int*)sqlite3_malloc(sizeof(int*));
+  *(pCur->pCurrent) = SearchIndexForKey(pathArg);
+ // printf("Seg is after index returns\n");
+  free(pathArg);
+
+  return rc;
+}
+
+/*
+**   
+** 
+*/
+ ec int audbColumn(sqlite3_vtab_cursor *cur, sqlite3_context *ctx, int i){
+	//printf("Entered column\n");
+	audb_cursor* cursor = (audb_cursor*)cur;
+	int keyNum = *(cursor->pCurrent);
+	char* res;
+	switch (i){
+		case 0: // id
+		//printf("%i\n", keyNum);
+		sqlite3_result_int(ctx, keyNum);
+		break;
+		case 1: // path
+		//printf("%s\n",keys_paths[keyNum].c_str());
+  		res = sqlite3_mprintf(keys_paths[keyNum].c_str());
+		sqlite3_result_text(ctx, res,-1, sqlite3_free);
+		break;
+		case 2: // song name
+		//printf("%s\n",keys_names[keyNum].c_str());
+  		res = sqlite3_mprintf(keys_names[keyNum].c_str());
+		sqlite3_result_text(ctx, res,-1, sqlite3_free);
+		//sqlite3_result_text(ctx, keys_names[keyNum].c_str(),-1,NULL);
+		break;
+		case 3: // artist
+		//printf("%s\n",keys_artists[keyNum].c_str());
+		res = sqlite3_mprintf(keys_artists[keyNum].c_str());
+		//sqlite3_result_text(ctx, keys_artists[keyNum].c_str(),-1, NULL);
+		sqlite3_result_text(ctx, res,-1, sqlite3_free);
+		break;
+
+	}
+  return SQLITE_OK;
+}
+
+/*
+** The rowid.  For the audb table, this is the same as the "id" column.
+*/
+  ec int audbRowid(sqlite3_vtab_cursor *cur, sqlite_int64 *pRowid){
+	//printf("Entered rowid\n");
+	audb_cursor* cursor = (audb_cursor*)cur;
+	*pRowid = *(cursor->pCurrent);
+  return SQLITE_OK;
+}
+
+ec int audbUpdate(sqlite3_vtab *pVTab, int argc, sqlite3_value **argv, sqlite_int64 *pRowid) {
+   // printf("update called with argc = %i\n", argc);
+	// new row inserted with rowid argv[1] and column values in argv[2] and following
+	// if argv[1] is SQL NULL, generate new unique rowid	
+    if (argc > 1  && (sqlite3_value_type(argv[0]) ==SQLITE_NULL || argv[0] == NULL)){ 
+	int id = sqlite3_value_int(argv[2]);
+	//const char* path = (const char*)sqlite3_value_text(argv[3]);
+	//const char* song = (const char*)sqlite3_value_text(argv[4]);
+	//const char* artist = (const char*)sqlite3_value_text(argv[5]);
+	VP_INDEX_BUILT = false;
+	string path((const char*)sqlite3_value_text(argv[3]));
+	string song((const char*)sqlite3_value_text(argv[4]));
+	string artist((const char*)sqlite3_value_text(argv[5]));
+	char* pathArg = (char*)malloc(path.length() + 1);
+	char* songArg = (char*)malloc(song.length() + 1);
+	char* artistArg = (char*)malloc(artist.length() + 1);
+	strcpy(pathArg, path.c_str());
+	strcpy(songArg, song.c_str());
+	strcpy(artistArg, artist.c_str());
+	Add_Key(pathArg, songArg, artistArg);
+	printf("Adding new key {id:%i path: %s song: %s artist: %s\n", id, pathArg, songArg, artistArg);
+	free(pathArg);
+	free(songArg);
+	free(artistArg);
+    }
+    return SQLITE_OK;
+}
+
+/*
+** EOF indicator
+*/
+  ec int audbEof(sqlite3_vtab_cursor *cur){
+	//printf("Entered EOF\n");
+  audb_cursor *pCur = (audb_cursor*)cur;
+	int rtn = (pCur->pCurrent == NULL);
+  return rtn;
+}
+
+/*
+** Search for terms of these forms:
+**
+**   (A)    root = $root
+**   (B1)   depth < $depth
+**   (B2)   depth <= $depth
+**   (B3)   depth = $depth
+**   (C)    tablename = $tablename
+**   (D)    idcolumn = $idcolumn
+**   (E)    parentcolumn = $parentcolumn
+**
+**
+**
+**   idxNum       meaning
+**   ----------   ------------------------------------------------------
+**   0x00000001   Term of the form (A) found
+**   0x00000002   The term of bit-2 is like (B1)
+**   0x000000f0   Index in filter.argv[] of $depth.  0 if not used.
+**   0x00000f00   Index in filter.argv[] of $tablename.  0 if not used.
+**   0x0000f000   Index in filter.argv[] of $idcolumn.  0 if not used
+**   0x000f0000   Index in filter.argv[] of $parentcolumn.  0 if not used.
+**
+** There must be a term of type (A).  If there is not, then the index type
+** is 0 and the query will return an empty set.
+*/
+  ec int audbBestIndex(
+  sqlite3_vtab *pTab,             /* The virtual table */
+  sqlite3_index_info *pIdxInfo    /* Information about the query */
+){
+ // printf("Entered bestindex\n");
+  if (pIdxInfo->nConstraint != 1)
+	printf("Invalid sql command, needs equality constraint\n");
+  const sqlite3_index_info::sqlite3_index_constraint *constraint;
+  constraint = pIdxInfo->aConstraint;
+  if (constraint->op != SQLITE_INDEX_CONSTRAINT_EQ)
+	printf("Invalid constraint op\n");
+  pIdxInfo->aConstraintUsage->argvIndex = 1;
+  pIdxInfo->aConstraintUsage->omit = 1;
+  return SQLITE_OK;
+}
+
+/*
+** A virtual table module that implements the "transitive_audb".
+*/
+ sqlite3_module audbModule = {
+  0,                      /* iVersion */
+  audbConnect,         /* xCreate */
+  audbConnect,         /* xConnect */
+  audbBestIndex,       /* xBestIndex */
+  audbDisconnect,      /* xDisconnect */
+  audbDisconnect,      /* xDestroy */
+  audbOpen,            /* xOpen - open a cursor */
+  audbClose,           /* xClose - close a cursor */
+  audbFilter,          /* xFilter - configure scan constraints */
+  audbNext,            /* xNext - advance a cursor */
+  audbEof,             /* xEof - check for end of scan */
+  audbColumn,          /* xColumn - read data */
+  audbRowid,           /* xRowid - read data */
+  audbUpdate,          /* xUpdate */
+  0,                      /* xBegin */
+  0,                      /* xSync */
+  0,                      /* xCommit */
+  0,                      /* xRollback */
+  0,                      /* xFindMethod */
+  0,                      /* xRename */
+  0,                      /* xSavepoint */
+  0,                      /* xRelease */
+  0                       /* xRollbackTo */
+};
+
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+
+/*
+** Register the audb virtual table
+*/
+#ifdef _WIN32
+__declspec(dllexport)
+#endif
+ ec int sqlite3_audb_init(
+  sqlite3 *db,
+  char **pzErrMsg,
+  const sqlite3_api_routines *pApi
+){
+  //printf("Entered audb_init\n");
+  int rc = SQLITE_OK;
+  SQLITE_EXTENSION_INIT2(pApi);
+  (void)pzErrMsg;
+#ifndef SQLITE_OMIT_VIRTUALTABLE
+  rc = sqlite3_create_module(db, "audb_tree", &audbModule, 0);
+#endif /* SQLITE_OMIT_VIRTUALTABLE */
+  return rc;
+}
+ ec int sqlite3_extension_init(sqlite3 *db, char **pzErrMsg, const sqlite3_api_routines *pApi){
+	//printf("Entered extension_init\n");
+	return sqlite3_audb_init(db, pzErrMsg, pApi);
+}
+
