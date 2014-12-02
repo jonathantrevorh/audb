@@ -415,7 +415,7 @@ FeatureSet BuildFeatureSet(vector<vector<int> > keys){
 vector<Feature> GenerateFeatures(vector<string> paths, bool useGlobalFolder = true){
 	vector<Feature> features;
 	for (int i = 0; i < paths.size(); i++){
-		string tm = (useGlobalFolder) ? "fpcalc -raw " + FOLDER + paths[i] + " > out_temp.txt " : "fpcalc -raw " + paths[i] + " > out_temp.txt ";
+		string tm = (useGlobalFolder) ? "./fpcalc -raw " + FOLDER + paths[i] + " > out_temp.txt " : "./fpcalc -raw " + paths[i] + " > out_temp.txt ";
 		char* ar = new char[tm.size() + 1];
 		tm.copy(ar, tm.size());
 		ar[tm.size()] = 0;
