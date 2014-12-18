@@ -4,9 +4,6 @@ audb
 - iteratively build the index tree
 
 ## Running
-Not final packaging, but running `./sqbuild` compiles the extension and run test commands in sqlite3.
-
-## Running
  1. Install requirements as per below
  2. Run `sqlite3` to get the sqlite3 shell
  3. Load the binary by running `.load ./audb`
