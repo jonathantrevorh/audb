@@ -1,1 +1,4 @@
-g++  VP_Tree.cc -o poc
+#!/bin/bash -e
+
+# compile the shared audb vtable
+g++ -g -fPIC -shared audb.cc -o audb.so -lm

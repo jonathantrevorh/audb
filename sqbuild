@@ -1,9 +1,0 @@
-#!/bin/bash -e
-
-# compile the shared audb vtable and run test sql
-gcc -g -fPIC -shared audb.c -o audb.so -lm && sqlite3 << EOF
-.load ./audb
-create virtual table samples using audb_tree;
-insert into samples values('song1', './Music/RHCP2.wav');
-select * from samples;
-EOF
